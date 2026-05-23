@@ -203,7 +203,33 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+function trpcFixPlugin(): Plugin {
+  return {
+    name: "trpc-fix-plugin",
+    transform(code, id) {
+      if (id.includes("react-query") || id.includes("createHooksInternal")) {
+        if (code.includes("hashQueryKey")) {
+          const match = code.match(/import\s*\{([^}]+)\}\s*from\s*['"]@tanstack\/(react-query|query-core)['"]/);
+          if (match) {
+            const list = match[1]
+              .split(",")
+              .map((x) => x.trim())
+              .filter((x) => x && x !== "hashQueryKey");
+            const newImport = `import { ${list.join(", ")} } from '@tanstack/react-query';\nconst hashQueryKey = (queryKey) => JSON.stringify(queryKey);`;
+            const newCode = code.replace(/import\s*\{([^}]+)\}\s*from\s*['"]@tanstack\/(react-query|query-core)['"]/, newImport);
+            return {
+              code: newCode,
+              map: null,
+            };
+          }
+        }
+      }
+      return null;
+    },
+  };
+}
+
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy(), trpcFixPlugin()];
 
 export default defineConfig({
   plugins,

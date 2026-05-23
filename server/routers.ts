@@ -12,9 +12,13 @@ import { TRPCError } from "@trpc/server";
  */
 const CreateIssueSchema = z.object({
   title: z.string().min(1),
+  slug: z.string().optional(),
   previewText: z.string().max(150),
+  issueNumber: z.number().optional(),
+  readingTimeMinutes: z.number().optional(),
   coverImageUrl: z.string().optional(),
   issueDate: z.date().optional(),
+  status: z.enum(["draft", "scheduled", "sending", "sent", "archived"]).optional(),
 });
 
 const SubscribeSchema = z.object({
@@ -25,8 +29,8 @@ const SubscribeSchema = z.object({
 
 const AIToolSchema = z.object({
   issueFocus: z.string().optional(),
-  tone: z.enum(["professional", "conversational", "educational"]).optional(),
-  targetAudience: z.enum(["business_owners", "tech_professionals", "students", "mixed"]).optional(),
+  tone: z.string().optional(),
+  targetAudience: z.string().optional(),
 });
 
 /**
@@ -70,6 +74,7 @@ const publicRouter = router({
           message: 'Check your email to confirm subscription',
         };
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         console.error('Subscribe error:', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
@@ -158,7 +163,7 @@ const adminRouter = router({
   // AI Tools
   generateFullIssue: protectedProcedure
     .input(AIToolSchema)
-    .mutation(async ({ input, ctx }: { input: z.infer<typeof AIToolSchema>; ctx: any }) => {
+    .mutation(async ({ input, ctx }) => {
       const admin = await db.getAdminByOpenId(ctx.user.openId);
       if (!admin) throw new TRPCError({ code: 'UNAUTHORIZED' });
 
@@ -203,7 +208,7 @@ Include news roundup, pakistan spotlight, deep dive, tool of week, and prompt of
 
   generateSubjectLines: protectedProcedure
     .input(z.object({ issueTitle: z.string(), previewText: z.string() }))
-    .mutation(async ({ input, ctx }: { input: z.infer<typeof z.object({ issueTitle: z.string(), previewText: z.string() })}; ctx: any }) => {
+    .mutation(async ({ input, ctx }) => {
       const admin = await db.getAdminByOpenId(ctx.user.openId);
       if (!admin) throw new TRPCError({ code: 'UNAUTHORIZED' });
 

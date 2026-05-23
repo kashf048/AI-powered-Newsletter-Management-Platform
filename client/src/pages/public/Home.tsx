@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
-import { Link } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowRight, Zap, TrendingUp, Users, Sparkles } from 'lucide-react';
-import { trpc } from '@/lib/trpc';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ArrowRight, Zap, TrendingUp, Users, Sparkles, BookOpen, Clock, ChevronRight, Gift, Trophy } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 export default function Home() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const subscribe = trpc.public.subscribe.useMutation();
-  const { data: analytics } = trpc.public.getAnalytics.useQuery();
-  const { data: latestIssues } = trpc.public.getLatestIssues.useQuery({ limit: 3 });
+  const { data: analytics } = trpc.public.getAnalytics.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  } as any);
+  const { data: latestIssues } = trpc.public.getLatestIssues.useQuery({ limit: 3 }, {
+    refetchOnWindowFocus: false,
+  } as any);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,195 +25,257 @@ export default function Home() {
     setLoading(true);
     try {
       await subscribe.mutateAsync({ email });
-      toast.success('Check your email to confirm!');
-      setEmail('');
-    } catch (error) {
-      toast.error('Failed to subscribe. Please try again.');
+      toast.success("Check your email to confirm your subscription!");
+      setEmail("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to subscribe. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const features = [
+    { icon: "🔥", title: "AI News Roundup", desc: "The most important global AI developments translated into practical context." },
+    { icon: "🇵🇰", title: "Pakistan AI Spotlight", desc: "How regional startups, developers, and regulations are shaping local AI." },
+    { icon: "📊", title: "In-Depth Analyses", desc: "Clear, zero-fluff breakdowns of model architectures and performance." },
+    { icon: "🛠️", title: "Tool of the Week", desc: "Curated tools and libraries that you can integrate into your workflow today." },
+    { icon: "💡", title: "Prompt of the Week", desc: "Optimized ready-to-copy prompts to supercharge your daily tasks." },
+    { icon: "📣", title: "Sponsorship Opportunities", desc: "Connecting local founders and tech companies with the community." },
+  ];
+
+  const rewards = [
+    { referrals: 1, reward: "AI Prompt Pack (100+ items)", desc: "Copy-paste prompts for development and marketing" },
+    { referrals: 3, reward: "Agentic Workflows implementation guide", desc: "PDF blueprint for building local multi-agent teams" },
+    { referrals: 5, reward: "AI Studio Premium Access", desc: "Early trial of customized GPT systems and Urdu LLMs" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-emerald-500 selection:text-slate-950 overflow-x-hidden">
+      {/* Decorative background glows */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
+
       {/* Navigation */}
-      <nav className="border-b border-slate-800 bg-slate-900/50 backdrop-blur">
+      <nav className="border-b border-slate-900/80 bg-slate-950/60 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-2xl font-bold">
-            <Zap className="w-8 h-8 text-emerald-500" />
-            <span className="text-white">NexusAI Digest</span>
-          </div>
+          <Link href="/" className="flex items-center gap-2 text-xl md:text-2xl font-bold cursor-pointer group">
+            <Zap className="w-7 h-7 text-emerald-500 group-hover:scale-110 transition-transform" />
+            <span className="text-white font-sans tracking-tight">NexusAI <span className="text-slate-400 font-light">Digest</span></span>
+          </Link>
           <div className="flex items-center gap-4">
-            <Link href="/issues">
-              <a className="text-slate-300 hover:text-white transition">Issues</a>
+            <Link href="/issues" className="text-sm font-medium text-slate-300 hover:text-white transition cursor-pointer">
+              Archive
             </Link>
-            <Link href="/subscribe">
-              <a>
-                <Button variant="default" size="sm">Subscribe</Button>
-              </a>
+            <Link href="/subscribe" className="cursor-pointer">
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
+                Subscribe
+              </Button>
             </Link>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="max-w-6xl mx-auto px-4 py-20 text-center">
-        <div className="space-y-6 mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight">
-            AI Intelligence,<br />Delivered Weekly
+      <section className="max-w-4xl mx-auto px-4 py-20 md:py-28 text-center relative">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-6"
+        >
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold tracking-wide uppercase">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Weekly AI Intelligence briefing</span>
+          </div>
+          
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight font-sans max-w-3xl mx-auto">
+            Practical AI Insights for <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-400">Pakistani Innovators</span>
           </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Pakistan's first AI newsletter for business leaders. No jargon. No fluff. Just what matters — and how it affects YOU.
+          
+          <p className="text-base md:text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">
+            Stay ahead of the curve. No fluff, no jargon. Just the absolute best AI workflows, tool guides, and local dev spotlights.
           </p>
-        </div>
+        </motion.div>
 
         {/* Subscribe Form */}
-        <form onSubmit={handleSubscribe} className="max-w-md mx-auto mb-12 flex gap-2">
-          <Input
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
-            disabled={loading}
-          />
-          <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700">
-            {loading ? 'Subscribing...' : 'Subscribe Free'}
-          </Button>
-        </form>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="mt-10"
+        >
+          <form onSubmit={handleSubscribe} className="max-w-md mx-auto flex gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-xl focus-within:border-emerald-500/50 transition-colors">
+            <Input
+              type="email"
+              placeholder="Enter your email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white placeholder:text-slate-600 h-10 w-full"
+              disabled={loading}
+              required
+            />
+            <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 h-10 transition-colors shrink-0">
+              {loading ? "Joining..." : "Subscribe Free"}
+            </Button>
+          </form>
+        </motion.div>
 
-        {/* Social Proof */}
-        <div className="flex items-center justify-center gap-8 text-slate-400 text-sm mb-16">
+        {/* Social Proof Stats */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="flex flex-wrap items-center justify-center gap-6 md:gap-10 text-slate-500 text-xs font-semibold uppercase tracking-wider mt-12"
+        >
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            <span>{analytics?.totalSubscribers || '3,200'}+ Subscribers</span>
+            <Users className="w-4 h-4 text-emerald-500" />
+            <span className="text-slate-400">{analytics?.totalSubscribers || 1420}+ subscribers</span>
           </div>
+          <div className="w-1.5 h-1.5 rounded-full bg-slate-800 hidden md:block" />
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            <span>Weekly Issues</span>
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
+            <span className="text-slate-400">Weekly issues</span>
           </div>
+          <div className="w-1.5 h-1.5 rounded-full bg-slate-800 hidden md:block" />
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            <span>Free</span>
+            <Sparkles className="w-4 h-4 text-emerald-500" />
+            <span className="text-slate-400">100% Free digest</span>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* What's Inside */}
-      <section className="max-w-6xl mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-white text-center mb-12">What's Inside Every Issue</h2>
+      {/* Featured Latest Issues */}
+      {latestIssues && latestIssues.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 py-16 border-t border-slate-900">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Latest Issues</h2>
+            <Link href="/issues" className="text-emerald-400 hover:text-emerald-300 text-sm font-semibold flex items-center gap-1 group cursor-pointer">
+              View Archive <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {latestIssues.map((issue) => (
+              <Link key={issue.id} href={`/${issue.slug}`} className="group block cursor-pointer">
+                <div className="bg-slate-900/40 border border-slate-900 hover:border-slate-800 rounded-xl overflow-hidden shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                  {issue.coverImageUrl ? (
+                    <div className="relative h-40 w-full overflow-hidden border-b border-slate-900">
+                      <img src={issue.coverImageUrl} alt={issue.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                  ) : (
+                    <div className="relative h-40 w-full overflow-hidden bg-slate-950 border-b border-slate-900 flex items-center justify-center">
+                      <BookOpen className="w-8 h-8 text-slate-800" />
+                    </div>
+                  )}
+                  <div className="p-5 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                      <span>Issue #{issue.issueNumber}</span>
+                      <span className="w-1 h-1 rounded-full bg-slate-700" />
+                      <span>{issue.readingTimeMinutes} min read</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">{issue.title}</h3>
+                    <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{issue.previewText}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* What's Inside Feature Grid */}
+      <section className="max-w-6xl mx-auto px-4 py-16 border-t border-slate-900">
+        <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">What's Inside Every Issue</h2>
+          <p className="text-slate-400 text-sm md:text-base leading-relaxed">
+            We review hundreds of papers, tools, and local news points to distill the absolute best insights for you.
+          </p>
+        </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { icon: '🔥', title: 'AI News Roundup', desc: 'Latest breakthroughs & trends' },
-            { icon: '🇵🇰', title: 'Pakistan AI Spotlight', desc: 'Local impact & opportunities' },
-            { icon: '📊', title: 'Deep Dives', desc: 'In-depth analysis & insights' },
-            { icon: '🛠️', title: 'Tool of the Week', desc: 'Practical AI tools to try' },
-            { icon: '💡', title: 'Prompt of the Week', desc: 'Ready-to-use AI prompts' },
-            { icon: '📣', title: 'Sponsor Picks', desc: 'Curated products & services' },
-          ].map((item, i) => (
-            <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 hover:border-emerald-600 transition">
-              <div className="text-4xl mb-3">{item.icon}</div>
-              <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-              <p className="text-slate-400 text-sm">{item.desc}</p>
+          {features.map((item, i) => (
+            <div key={i} className="bg-slate-900/30 border border-slate-900/60 hover:border-slate-800 rounded-xl p-6 transition-colors duration-200">
+              <div className="text-3xl mb-4">{item.icon}</div>
+              <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Featured Issues */}
-      <section className="max-w-6xl mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-white mb-8">Latest Issues</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {latestIssues?.map((issue) => (
-            <Link key={issue.id} href={`/${issue.slug}`}>
-              <a className="group bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden hover:border-emerald-600 transition">
-                {issue.coverImageUrl && (
-                  <img src={issue.coverImageUrl} alt={issue.title} className="w-full h-40 object-cover" />
-                )}
-                <div className="p-4">
-                  <div className="text-sm text-emerald-400 mb-2">Issue #{issue.issueNumber}</div>
-                  <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition mb-2">{issue.title}</h3>
-                  <p className="text-slate-400 text-sm mb-4">{issue.previewText}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">{issue.readingTimeMinutes} min read</span>
-                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition" />
+      {/* Referral Rewards Section */}
+      <section className="max-w-6xl mx-auto px-4 py-16 border-t border-slate-900">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-900/40 border border-slate-900 rounded-2xl p-8 md:p-12 grid md:grid-cols-2 gap-8 items-center">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Referral Program</span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white leading-tight">
+              Share NexusAI & Unlock Exclusive Perks
+            </h2>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              When you invite your friends to join, you unlock specialized resources. It's our way of saying thanks for helping grow Pakistan's AI community.
+            </p>
+            <Link href="/subscribe">
+              <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-950/20">
+                Get Your Referral Link
+              </Button>
+            </Link>
+          </div>
+
+          <div className="space-y-4 bg-slate-950/60 border border-slate-900 rounded-xl p-6">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Reward Milestones</h3>
+            <div className="space-y-4">
+              {rewards.map((r, idx) => (
+                <div key={idx} className="flex gap-4 items-start border-b border-slate-900/60 last:border-0 pb-3 last:pb-0">
+                  <div className="text-sm font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-2.5 py-1 select-none shrink-0 font-mono">
+                    {r.referrals}
+                  </div>
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-semibold text-white leading-tight">{r.reward}</h4>
+                    <p className="text-xs text-slate-400">{r.desc}</p>
                   </div>
                 </div>
-              </a>
-            </Link>
-          ))}
-        </div>
-        <div className="text-center mt-8">
-          <Link href="/issues">
-            <a className="text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-2">
-              View All Issues <ArrowRight className="w-4 h-4" />
-            </a>
-          </Link>
-        </div>
-      </section>
-
-      {/* Referral Program */}
-      <section className="max-w-6xl mx-auto px-4 py-16">
-        <div className="bg-gradient-to-r from-emerald-900/20 to-emerald-900/10 border border-emerald-800 rounded-lg p-12 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Share & Earn Rewards</h2>
-          <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
-            Refer friends to NexusAI Digest and unlock exclusive rewards. Get AI prompt packs, premium access, and more!
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            {[
-              { count: 3, reward: '🎁 AI Prompt Pack' },
-              { count: 10, reward: '⭐ 1 Month Premium' },
-              { count: 25, reward: '🏆 NexusAI Merch' },
-            ].map((item, i) => (
-              <div key={i} className="bg-slate-800/50 rounded p-4">
-                <div className="text-2xl font-bold text-emerald-400 mb-2">{item.count}</div>
-                <div className="text-slate-300">{item.reward}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-          <Link href="/subscribe">
-            <a>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">Get Your Referral Link</Button>
-            </a>
-          </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-900/50 mt-20">
-        <div className="max-w-6xl mx-auto px-4 py-12">
+      <footer className="border-t border-slate-900 bg-slate-950/60 mt-16 py-12 relative z-10">
+        <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-emerald-500" />
-                <span className="font-bold text-white">NexusAI</span>
+                <span className="font-bold text-white tracking-tight">NexusAI <span className="text-slate-400 font-light">Digest</span></span>
               </div>
-              <p className="text-slate-400 text-sm">Pakistan's premier AI newsletter</p>
+              <p className="text-slate-500 text-xs">Pakistan's premier briefing on artificial intelligence and workflows.</p>
             </div>
             <div>
-              <h3 className="font-semibold text-white mb-4">Product</h3>
-              <ul className="space-y-2 text-slate-400 text-sm">
-                <li><Link href="/issues"><a className="hover:text-white">Issues</a></Link></li>
-                <li><Link href="/subscribe"><a className="hover:text-white">Subscribe</a></Link></li>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Newsletter</h4>
+              <ul className="space-y-2 text-xs text-slate-500 font-medium">
+                <li><Link href="/issues" className="hover:text-white transition">Archive</Link></li>
+                <li><Link href="/subscribe" className="hover:text-white transition">Subscribe</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-white mb-4">Legal</h3>
-              <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-white">Privacy</a></li>
-                <li><a href="#" className="hover:text-white">Terms</a></li>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Legal</h4>
+              <ul className="space-y-2 text-xs text-slate-500 font-medium">
+                <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-white mb-4">Connect</h3>
-              <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-white">Twitter</a></li>
-                <li><a href="#" className="hover:text-white">LinkedIn</a></li>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Connect</h4>
+              <ul className="space-y-2 text-xs text-slate-500 font-medium">
+                <li><a href="#" className="hover:text-white transition">Twitter / X</a></li>
+                <li><a href="#" className="hover:text-white transition">LinkedIn</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-slate-800 pt-8 text-center text-slate-500 text-sm">
-            <p>&copy; 2026 NexusAI Digest. All rights reserved.</p>
+          <div className="border-t border-slate-900/60 pt-8 text-center text-slate-600 text-xs font-medium">
+            <p>&copy; {new Date().getFullYear()} NexusAI Digest. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -33,26 +33,26 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/issues"} component={IssuesArchive} />
       <Route path={"/:slug"} component={IssueReader} />
-      <Route path={"}/subscribe"} component={Subscribe} />
-      <Route path={"}/confirm"} component={ConfirmEmail} />
-      <Route path={"}/unsubscribe"} component={Unsubscribe} />
-      <Route path={"}/referral/:code"} component={ReferralLanding} />
+      <Route path={"/subscribe"} component={Subscribe} />
+      <Route path={"/confirm"} component={ConfirmEmail} />
+      <Route path={"/unsubscribe"} component={Unsubscribe} />
+      <Route path={"/referral/:code"} component={ReferralLanding} />
 
       {/* Admin routes */}
-      <Route path={"}/admin/*"}>
+      <Route path={"/admin/*"}>
         {() => (
           <AdminLayout>
             <Switch>
-              <Route path={"}/admin/dashboard"} component={Dashboard} />
-              <Route path={"}/admin/issues"} component={IssuesList} />
-              <Route path={"}/admin/issues/new"} component={IssueEditor} />
-              <Route path={"}/admin/issues/:id/edit"} component={IssueEditor} />
-              <Route path={"}/admin/subscribers"} component={SubscribersList} />
-              <Route path={"}/admin/ai-studio"} component={AIStudio} />
-              <Route path={"}/admin/sponsors"} component={Sponsors} />
-              <Route path={"}/admin/referrals"} component={Referrals} />
-              <Route path={"}/admin/analytics"} component={Analytics} />
-              <Route path={"}/admin/settings"} component={Settings} />
+              <Route path={"/admin/dashboard"} component={Dashboard} />
+              <Route path={"/admin/issues"} component={IssuesList} />
+              <Route path={"/admin/issues/new"} component={IssueEditor} />
+              <Route path={"/admin/issues/:id/edit"} component={IssueEditor} />
+              <Route path={"/admin/subscribers"} component={SubscribersList} />
+              <Route path={"/admin/ai-studio"} component={AIStudio} />
+              <Route path={"/admin/sponsors"} component={Sponsors} />
+              <Route path={"/admin/referrals"} component={Referrals} />
+              <Route path={"/admin/analytics"} component={Analytics} />
+              <Route path={"/admin/settings"} component={Settings} />
               <Route component={NotFound} />
             </Switch>
           </AdminLayout>
@@ -60,7 +60,7 @@ function Router() {
       </Route>
 
       {/* 404 */}
-      <Route path={"}/404"} component={NotFound} />
+      <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
