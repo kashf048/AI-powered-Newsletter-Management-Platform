@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Download, Trash, UserX, UserCheck, RefreshCw } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import { apiService } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -11,21 +12,13 @@ export default function SubscribersList() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const { data: dbSubscribers, isLoading, refetch } = trpc.admin.getSubscribers.useQuery(undefined, {
+  const { data: subscribers, isLoading, refetch } = useQuery({
+    queryKey: ["subscribers"],
+    queryFn: apiService.admin.getSubscribers,
     refetchOnWindowFocus: false,
-  } as any);
+  });
 
-  const mockSubscribers = [
-    { id: 1, fullName: "Amina Khan", email: "amina@domain.pk", referralCode: "AM8932", referralCount: 4, status: "active", source: "website", createdAt: new Date(Date.now() - 3600000 * 2).toISOString() },
-    { id: 2, fullName: "Zainab Malik", email: "zainab@domain.pk", referralCode: "ZM4423", referralCount: 1, status: "active", source: "website", createdAt: new Date(Date.now() - 3600000 * 12).toISOString() },
-    { id: 3, fullName: "Bilal Ahmed", email: "bilal@domain.pk", referralCode: "BA7781", referralCount: 0, status: "pending", source: "referral", createdAt: new Date(Date.now() - 3600000 * 24).toISOString() },
-    { id: 4, fullName: "Hamza Abbasi", email: "hamza@domain.pk", referralCode: "HA0023", referralCount: 12, status: "active", source: "website", createdAt: new Date(Date.now() - 3600000 * 48).toISOString() },
-    { id: 5, fullName: "Sara Ali", email: "sara@domain.pk", referralCode: "SA1124", referralCount: 0, status: "unsubscribed", source: "website", createdAt: new Date(Date.now() - 3600000 * 96).toISOString() },
-  ];
-
-  const subscribers = (dbSubscribers && dbSubscribers.length > 0) ? dbSubscribers : mockSubscribers;
-
-  const filtered = subscribers.filter((sub) => {
+  const filtered = (subscribers || []).filter((sub) => {
     const matchesSearch =
       (sub.fullName || "").toLowerCase().includes(search.toLowerCase()) ||
       sub.email.toLowerCase().includes(search.toLowerCase());
@@ -47,14 +40,13 @@ export default function SubscribersList() {
   };
 
   const handleExportCSV = () => {
-    const headers = ["Name", "Email", "Referral Code", "Referrals", "Status", "Source", "Date Joined"];
+    const headers = ["Name", "Email", "Referral Code", "Referrals", "Status", "Date Joined"];
     const rows = filtered.map((sub) => [
       sub.fullName || "Anonymous",
       sub.email,
       sub.referralCode || "",
       sub.referralCount || 0,
       sub.status,
-      sub.source,
       new Date(sub.createdAt).toLocaleDateString(),
     ]);
 
@@ -73,30 +65,30 @@ export default function SubscribersList() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white font-sans">Subscribers</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Subscribers</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             Manage your newsletter audience, track referrals, and export lists.
           </p>
         </div>
-        <Button onClick={handleExportCSV} className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white gap-2 transition-colors">
+        <Button onClick={handleExportCSV} className="bg-card border border-border hover:bg-accent text-foreground gap-2 transition-colors">
           <Download className="w-4 h-4" /> Export CSV
         </Button>
       </div>
 
       {/* Filters Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-900/40 p-4 border border-slate-900 rounded-xl">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-card p-4 border border-border rounded-xl">
         <div className="relative w-full md:max-w-xs">
           <Input
             placeholder="Search subscribers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-slate-950 border-slate-800 focus:border-emerald-500 pl-10 text-white"
+            className="bg-background border-border focus:border-primary pl-10 text-foreground"
           />
-          <Search className="w-4 h-4 text-slate-600 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-muted-foreground/60 absolute left-3.5 top-3" />
         </div>
 
         <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
@@ -107,69 +99,65 @@ export default function SubscribersList() {
               variant={statusFilter === status ? "default" : "outline"}
               className={`h-9 px-4 capitalize transition-all ${
                 statusFilter === status 
-                  ? "bg-slate-800 text-white border-slate-700 hover:bg-slate-700" 
-                  : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/95" 
+                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
               {status}
             </Button>
           ))}
-          <Button variant="ghost" size="icon" onClick={() => refetch()} className="text-slate-400 hover:text-white shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => refetch()} className="text-muted-foreground hover:text-foreground shrink-0">
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
       {/* Subscribers Table */}
-      <div className="bg-slate-900/60 border border-slate-900 rounded-xl overflow-hidden shadow-lg">
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
         {isLoading ? (
-          <div className="p-8 text-center text-slate-400">Loading subscribers...</div>
+          <div className="p-8 text-center text-muted-foreground">Loading subscribers...</div>
         ) : filtered.length > 0 ? (
           <Table>
-            <TableHeader className="border-slate-800">
-              <TableRow className="border-slate-800 hover:bg-slate-800/10">
-                <TableHead className="text-slate-400 text-xs font-semibold">Subscriber Name</TableHead>
-                <TableHead className="text-slate-400 text-xs font-semibold">Email Address</TableHead>
-                <TableHead className="text-slate-400 text-xs font-semibold w-24">Referrals</TableHead>
-                <TableHead className="text-slate-400 text-xs font-semibold w-28">Status</TableHead>
-                <TableHead className="text-slate-400 text-xs font-semibold w-28">Source</TableHead>
-                <TableHead className="text-slate-400 text-xs font-semibold w-36">Date Joined</TableHead>
-                <TableHead className="text-slate-400 text-xs font-semibold w-24 text-right">Actions</TableHead>
+            <TableHeader className="border-border">
+              <TableRow className="border-border hover:bg-accent/40">
+                <TableHead className="text-muted-foreground text-xs font-semibold">Subscriber Name</TableHead>
+                <TableHead className="text-muted-foreground text-xs font-semibold">Email Address</TableHead>
+                <TableHead className="text-muted-foreground text-xs font-semibold w-24">Referrals</TableHead>
+                <TableHead className="text-muted-foreground text-xs font-semibold w-28">Status</TableHead>
+                <TableHead className="text-muted-foreground text-xs font-semibold w-36">Date Joined</TableHead>
+                <TableHead className="text-muted-foreground text-xs font-semibold w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((sub) => (
-                <TableRow key={sub.id} className="border-slate-800 hover:bg-slate-800/20">
-                  <TableCell className="font-medium text-white">
-                    {sub.fullName || <span className="text-slate-500 italic">Anonymous</span>}
+                <TableRow key={sub.id} className="border-border hover:bg-accent/40">
+                  <TableCell className="font-medium text-foreground">
+                    {sub.fullName || <span className="text-muted-foreground/60 italic">Anonymous</span>}
                   </TableCell>
-                  <TableCell className="font-mono text-slate-300">
+                  <TableCell className="font-mono text-muted-foreground">
                     {sub.email}
                   </TableCell>
-                  <TableCell className="text-slate-300 font-mono font-semibold">
+                  <TableCell className="text-muted-foreground font-mono font-semibold">
                     {sub.referralCount || 0}
                   </TableCell>
                   <TableCell>
                     {sub.status === "active" && (
-                      <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
+                      <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/10">
                         Active
                       </Badge>
                     )}
                     {sub.status === "pending" && (
-                      <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/10">
+                      <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/10">
                         Pending
                       </Badge>
                     )}
                     {sub.status === "unsubscribed" && (
-                      <Badge className="bg-red-500/10 text-red-400 border border-red-500/10">
+                      <Badge className="bg-red-500/10 text-red-500 border border-red-500/10">
                         Unsubscribed
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-slate-400 text-xs capitalize">
-                    {sub.source}
-                  </TableCell>
-                  <TableCell className="text-slate-400 text-sm">
+                  <TableCell className="text-muted-foreground text-sm">
                     {new Date(sub.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </TableCell>
                   <TableCell className="text-right">
@@ -179,7 +167,7 @@ export default function SubscribersList() {
                           variant="ghost" 
                           size="icon" 
                           onClick={() => handleStatusChange(sub.id, sub.status || "")}
-                          className="h-8 w-8 text-slate-400 hover:text-amber-400"
+                          className="h-8 w-8 text-muted-foreground hover:text-amber-500"
                         >
                           <UserX className="w-4 h-4" />
                         </Button>
@@ -188,7 +176,7 @@ export default function SubscribersList() {
                           variant="ghost" 
                           size="icon" 
                           onClick={() => handleStatusChange(sub.id, sub.status || "")}
-                          className="h-8 w-8 text-slate-400 hover:text-emerald-400"
+                          className="h-8 w-8 text-muted-foreground hover:text-emerald-500"
                         >
                           <UserCheck className="w-4 h-4" />
                         </Button>
@@ -197,7 +185,7 @@ export default function SubscribersList() {
                         variant="ghost" 
                         size="icon" 
                         onClick={() => handleDelete(sub.id)}
-                        className="h-8 w-8 text-slate-400 hover:text-red-400"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       >
                         <Trash className="w-4 h-4" />
                       </Button>
@@ -208,7 +196,7 @@ export default function SubscribersList() {
             </TableBody>
           </Table>
         ) : (
-          <div className="p-12 text-center text-slate-500">
+          <div className="p-12 text-center text-muted-foreground">
             No subscribers found matching "{search}".
           </div>
         )}

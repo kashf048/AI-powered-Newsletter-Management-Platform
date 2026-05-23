@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, Bell, Zap, LayoutDashboard, FileText, Users, Sparkles, DollarSign, Trophy, BarChart3, Settings } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { Menu, X, LogOut, Bell, Zap, LayoutDashboard, FileText, Users, Sparkles, DollarSign, Trophy, BarChart3, Settings, Sun, Moon } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiService } from "@/lib/api";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -23,12 +25,18 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [location] = useLocation();
-  const logout = trpc.auth.logout.useMutation();
+  const { theme, toggleTheme } = useTheme();
 
-  const { data: user, isLoading } = trpc.auth.me.useQuery(undefined, {
+  const logout = useMutation({
+    mutationFn: apiService.auth.logout
+  });
+
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["me"],
+    queryFn: apiService.auth.getMe,
     refetchOnWindowFocus: false,
     retry: false,
-  } as any);
+  });
 
   const handleLogout = async () => {
     try {
@@ -42,7 +50,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-sans">
         <span className="animate-pulse">Loading secure admin environment...</span>
       </div>
     );
@@ -51,16 +59,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   // Redirect to home if user is not authorized
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4 text-center px-4 font-sans text-white">
-        <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-2">
-          <X className="w-8 h-8 text-red-400" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-center px-4 font-sans text-foreground">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto mb-2">
+          <X className="w-8 h-8 text-destructive" />
         </div>
-        <h2 className="text-xl font-bold text-white">Access Denied</h2>
-        <p className="text-slate-400 text-sm max-w-xs">
+        <h2 className="text-xl font-bold">Access Denied</h2>
+        <p className="text-muted-foreground text-sm max-w-xs">
           This portal requires authenticated admin role.
         </p>
         <Link href="/">
-          <Button className="bg-emerald-600 hover:bg-emerald-500 text-white px-6">
+          <Button className="bg-primary hover:bg-primary/95 text-primary-foreground px-6">
             Return to Homepage
           </Button>
         </Link>
@@ -69,17 +77,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-slate-950 text-white font-sans overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden">
       {/* Sidebar */}
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-20"
-        } bg-slate-900 border-r border-slate-800 text-white transition-all duration-300 flex flex-col`}
+        } bg-card border-r border-border transition-all duration-300 flex flex-col`}
       >
         {/* Brand Logo header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between h-16 shrink-0">
+        <div className="p-4 border-b border-border flex items-center justify-between h-16 shrink-0">
           <div className={`flex items-center gap-2 ${!sidebarOpen && "justify-center w-full"}`}>
-            <Zap className="w-6 h-6 text-emerald-500 shrink-0" />
+            <Zap className="w-6 h-6 text-primary shrink-0" />
             {sidebarOpen && <span className="font-bold text-lg tracking-tight">NexusAI</span>}
           </div>
         </div>
@@ -94,16 +102,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <a
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group cursor-pointer ${
                     isActive
-                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-950/20"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-white" : "text-slate-500 group-hover:text-white"}`} />
+                  <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"}`} />
                   {sidebarOpen && (
                     <>
                       <span className="flex-1">{item.label}</span>
                       {item.badge && (
-                        <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded">
                           {item.badge}
                         </span>
                       )}
@@ -116,11 +124,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
 
         {/* Footer controls section */}
-        <div className="border-t border-slate-800/80 p-3 space-y-1 shrink-0">
+        <div className="border-t border-border p-3 space-y-1 shrink-0">
           <Button
             variant="ghost"
             size="sm"
-            className={`w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800/60 ${!sidebarOpen && "justify-center"}`}
+            className={`w-full justify-start text-muted-foreground hover:text-foreground hover:bg-accent ${!sidebarOpen && "justify-center"}`}
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4 shrink-0" />
@@ -130,7 +138,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800/60 ${!sidebarOpen && "justify-center"}`}
+            className={`w-full justify-start text-muted-foreground hover:text-foreground hover:bg-accent ${!sidebarOpen && "justify-center"}`}
           >
             {sidebarOpen ? <X className="w-4 h-4 shrink-0" /> : <Menu className="w-4 h-4 shrink-0" />}
             {sidebarOpen && <span className="ml-2.5 text-xs font-semibold">Collapse</span>}
@@ -141,19 +149,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main viewport area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Navigation title banner */}
-        <header className="bg-slate-900 border-b border-slate-800/80 px-6 h-16 flex items-center justify-between shrink-0">
+        <header className="bg-card border-b border-border px-6 h-16 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Admin Portal</h2>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Admin Portal</h2>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white h-9 w-9">
+            {/* Theme Toggle Button */}
+            {toggleTheme && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground hover:text-foreground h-9 w-9"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9">
               <Bell className="w-4 h-4" />
             </Button>
           </div>
         </header>
 
         {/* Main nested layout */}
-        <main className="flex-1 overflow-auto bg-slate-950 relative">
+        <main className="flex-1 overflow-auto bg-background relative">
           <div className="p-6 max-w-6xl mx-auto w-full">
             {children}
           </div>
