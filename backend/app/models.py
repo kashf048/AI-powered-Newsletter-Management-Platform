@@ -6,6 +6,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship
 
+def utcnow():
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
 Base = declarative_base()
 
 class Admin(Base):
@@ -17,8 +20,8 @@ class Admin(Base):
     name = Column(Text, nullable=True)
     avatar_url = Column(String(500), nullable=True, name="avatarUrl")
     is_superadmin = Column(Boolean, default=False, name="isSuperadmin")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False, name="updatedAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False, name="updatedAt")
 
     issues = relationship("Issue", back_populates="admin")
     ai_generations = relationship("AiGeneration", back_populates="admin")
@@ -43,8 +46,8 @@ class Subscriber(Base):
     location_country = Column(String(100), default="Pakistan", name="locationCountry")
     tags = Column(JSON, default=list)
     custom_fields = Column(JSON, default=dict, name="customFields")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False, name="updatedAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False, name="updatedAt")
 
     email_events = relationship("EmailEvent", back_populates="subscriber")
     referral_rewards = relationship("ReferralReward", back_populates="subscriber")
@@ -71,8 +74,8 @@ class Issue(Base):
     total_recipients = Column(Integer, default=0, name="totalRecipients")
     ai_generated = Column(Boolean, default=False, name="aiGenerated")
     is_premium = Column(Boolean, default=False, name="isPremium")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False, name="updatedAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False, name="updatedAt")
 
     admin = relationship("Admin", back_populates="issues")
     sections = relationship("IssueSection", back_populates="issue")
@@ -99,7 +102,7 @@ class IssueSection(Base):
     order_index = Column(Integer, default=0, name="orderIndex")
     sponsor_id = Column(Integer, ForeignKey("sponsors.id"), nullable=True, name="sponsorId")
     ai_generated = Column(Boolean, default=False, name="aiGenerated")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
 
     issue = relationship("Issue", back_populates="sections")
     sponsor = relationship("Sponsor", back_populates="sections")
@@ -118,8 +121,8 @@ class Sponsor(Base):
     industry = Column(String(100), nullable=True)
     total_spend_pkr = Column(Numeric(12, 2), default=0.00, name="totalSpendPkr")
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False, name="updatedAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False, name="updatedAt")
 
     sections = relationship("IssueSection", back_populates="sponsor")
     sponsorships = relationship("Sponsorship", back_populates="sponsor")
@@ -142,7 +145,7 @@ class Sponsorship(Base):
     status = Column(Enum("booked", "confirmed", "delivered", "cancelled", name="sponsorship_status"), default="booked")
     impressions = Column(Integer, default=0)
     clicks = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
 
     sponsor = relationship("Sponsor", back_populates="sponsorships")
     issue = relationship("Issue", back_populates="sponsorships")
@@ -161,7 +164,7 @@ class EmailEvent(Base):
     link_url = Column(String(500), nullable=True, name="linkUrl")
     ip_address = Column(String(45), nullable=True, name="ipAddress")
     user_agent = Column(String(500), nullable=True, name="userAgent")
-    occurred_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="occurredAt")
+    occurred_at = Column(DateTime, default=utcnow, nullable=False, name="occurredAt")
     raw_payload = Column(JSON, nullable=True, name="rawPayload")
 
     subscriber = relationship("Subscriber", back_populates="email_events")
@@ -178,7 +181,7 @@ class ReferralReward(Base):
     milestone_count = Column(Integer, nullable=False, name="milestoneCount")
     is_claimed = Column(Boolean, default=False, name="isClaimed")
     claimed_at = Column(DateTime, nullable=True, name="claimedAt")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
 
     subscriber = relationship("Subscriber", back_populates="referral_rewards")
 
@@ -204,7 +207,7 @@ class AiGeneration(Base):
     model_used = Column(String(100), nullable=True, name="modelUsed")
     tokens_used = Column(Integer, default=0, name="tokensUsed")
     generation_time_ms = Column(Integer, default=0, name="generationTimeMs")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
 
     admin = relationship("Admin", back_populates="ai_generations")
     issue = relationship("Issue")
@@ -219,6 +222,6 @@ class User(Base):
     email = Column(String(320), nullable=True)
     login_method = Column(String(64), nullable=True, name="loginMethod")
     role = Column(Enum("user", "admin", name="user_role"), default="user", nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="createdAt")
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False, name="updatedAt")
-    last_signed_in = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, name="lastSignedIn")
+    created_at = Column(DateTime, default=utcnow, nullable=False, name="createdAt")
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False, name="updatedAt")
+    last_signed_in = Column(DateTime, default=utcnow, nullable=False, name="lastSignedIn")

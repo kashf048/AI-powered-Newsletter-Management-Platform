@@ -1,17 +1,26 @@
 import os
+import time
+import logging
+import datetime
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from backend.app.config import settings
 from backend.app.database import init_db
 from backend.app.routers import auth, public, admin
 
+# Setup logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Auto-initialize database schema on startup for easy installation
+    logger.info("Initializing database...")
     await init_db()
+    logger.info("Database initialized successfully.")
     yield
 
 app = FastAPI(
@@ -21,16 +30,61 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configurations
+# Global Exception Handler to prevent stack trace leaks
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled Exception occurred: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An unexpected server error occurred. Please try again later."}
+    )
+
+# Security Headers Middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"[{request.method}] {request.url.path} - Status: {response.status_code} - Duration: {duration:.4f}s")
+    return response
+
+# Tightened CORS configuration
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if settings.FRONTEND_URL:
+    frontend_origin = settings.FRONTEND_URL.rstrip('/')
+    if frontend_origin not in origins:
+        origins.append(frontend_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In development, allow frontend origin
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # API Routers
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "message": "System is running smoothly"
+    }
+
 app.include_router(auth.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")

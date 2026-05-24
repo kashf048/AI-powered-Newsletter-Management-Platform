@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Save, Sparkles, Eye, Code, Loader2, Play } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiService, IssueSection } from "@/lib/api";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
 export default function IssueEditor() {
   const params = useParams<{ id?: string }>();
   const isEdit = !!params.id;
+  const issueId = isEdit ? parseInt(params.id!) : null;
   const [, setLocation] = useLocation();
 
   const [title, setTitle] = useState("");
@@ -26,38 +28,71 @@ export default function IssueEditor() {
   const [aiLoading, setAiLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const createMutation = trpc.admin.createIssue.useMutation();
-  const generateAiMutation = trpc.admin.generateFullIssue.useMutation();
+  // Fetch issue data if in edit mode
+  const { data: issue, isLoading: isLoadingIssue } = useQuery({
+    queryKey: ["adminIssue", issueId],
+    queryFn: () => apiService.admin.getIssue(issueId!),
+    enabled: isEdit && !!issueId,
+    refetchOnWindowFocus: false,
+  });
 
-  // Load existing issue data if in edit mode (Simulation/Mock fetch)
+  // Populate state on load
   useEffect(() => {
-    if (isEdit) {
-      setTitle("Sadapay Integration & Agentic Fintech in Pakistan");
-      setSlug("sadapay-agentic-fintech");
-      setPreviewText("How LLM-powered wallets are changing how Pakistanis budget and pay bills.");
-      setIssueNumber(19);
-      setReadingTime(6);
-      setCoverImageUrl("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600");
-      setContent(`## 🇵🇰 Pakistan Spotlight: Fintech & Agentic Wallets
-
-With the acquisition of Sadapay and NayaPay expanding services, the local fintech sector is moving to the next level: **conversational AI agents**. Imagine asking your banking app: *"Bilal, check how much I spent on K-Electric bills this quarter, and advise if I can save money."* 
-
-We analyze how local API infrastructures are adapting to support these secure agentic queries.
-
-### Why it matters:
-The traditional banking portal is static. Conversational interfaces increase daily active engagement by **40%**, particularly among youth who prefer text-messaging over navigating complex dashboards.
-
-## 🔥 Tech Roundup: Multi-Agent Loops
-
-This week, open-source developers released tools showcasing how agents can talk to other agents to resolve customer complaints. For Pakistani software export houses, deploying these architectures is becoming a key differentiator in outsourcing pitches.
-
-### Prompt of the Week:
-\`\`\`text
-Analyze my Sadapay monthly PDF statement. Categorize transactions into: Food (Foodpanda), Utilities, Freelance Inbound (Payoneer), and transfer out. Highlight the top 3 spending nodes.
-\`\`\`
-`);
+    if (issue) {
+      setTitle(issue.title);
+      setSlug(issue.slug);
+      setPreviewText(issue.previewText || "");
+      setIssueNumber(issue.issueNumber);
+      setReadingTime(issue.readingTimeMinutes);
+      setCoverImageUrl(issue.coverImageUrl || "");
+      
+      // Reconstruct single markdown body from sections or display webContent
+      if (issue.sections && issue.sections.length > 0) {
+        // Look for the custom section containing content
+        const customSec = issue.sections.find(s => s.sectionType === "custom");
+        if (customSec) {
+          setContent(customSec.content || "");
+        } else {
+          // Fallback: concatenate all sections
+          setContent(issue.sections.map(s => `## ${s.title}\n\n${s.content || ""}`).join("\n\n"));
+        }
+      } else {
+        setContent(issue.webContent || "");
+      }
     }
-  }, [isEdit, params.id]);
+  }, [issue]);
+
+  const createMutation = useMutation({
+    mutationFn: apiService.admin.createIssue,
+    onSuccess: () => {
+      toast.success("Issue created successfully!");
+      setLocation("/admin/issues");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to create issue");
+      setSaving(false);
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) => apiService.admin.updateIssue(id, payload),
+    onSuccess: () => {
+      toast.success("Issue updated successfully!");
+      setLocation("/admin/issues");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to update issue");
+      setSaving(false);
+    }
+  });
+
+  const generateAiMutation = useMutation({
+    mutationFn: apiService.admin.generateFullIssue,
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "AI Generation failed");
+      setAiLoading(false);
+    }
+  });
 
   // Handle Slug generation on title change
   const handleTitleChange = (val: string) => {
@@ -74,23 +109,38 @@ Analyze my Sadapay monthly PDF statement. Categorize transactions into: Food (Fo
 
   // Save changes mutation trigger
   const handleSave = async (status: "draft" | "sent") => {
+    if (!title || !previewText) {
+      toast.error("Please enter a title and preview subtitle");
+      return;
+    }
+
     setSaving(true);
-    try {
-      await createMutation.mutateAsync({
-        title,
-        slug,
-        previewText,
-        issueNumber,
-        readingTimeMinutes: readingTime,
-        coverImageUrl: coverImageUrl || undefined,
-        status,
-      });
-      toast.success(isEdit ? "Issue updated successfully!" : "Issue created successfully!");
-      setLocation("/admin/issues");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save issue.");
-    } finally {
-      setSaving(false);
+    
+    // Structure content inside a custom section for database structure compatibility
+    const sections: IssueSection[] = [
+      {
+        sectionType: "custom",
+        title: "Newsletter Content",
+        content: content,
+        orderIndex: 0,
+      }
+    ];
+
+    const payload = {
+      title,
+      slug,
+      previewText,
+      issueNumber,
+      readingTimeMinutes: readingTime,
+      coverImageUrl: coverImageUrl || null,
+      status,
+      sections,
+    };
+
+    if (isEdit && issueId) {
+      updateMutation.mutate({ id: issueId, payload });
+    } else {
+      createMutation.mutate(payload);
     }
   };
 
@@ -102,35 +152,38 @@ Analyze my Sadapay monthly PDF statement. Categorize transactions into: Food (Fo
     }
 
     setAiLoading(true);
-    try {
-      const response = await generateAiMutation.mutateAsync({
+    generateAiMutation.mutate(
+      {
         issueFocus: aiFocus,
         tone: "professional",
         targetAudience: "Pakistani tech innovators",
-      });
-
-      if (response && response.content) {
-        // Parse the assistant string response
-        let aiBody = response.content;
-        try {
-          const parsed = JSON.parse(response.content);
-          if (parsed.sections) {
-            aiBody = parsed.sections
-              .map((s: any) => `## ${s.title}\n\n${s.content}`)
-              .join("\n\n");
+      },
+      {
+        onSuccess: (response) => {
+          if (response && response.content) {
+            let aiBody = response.content;
+            try {
+              const parsed = JSON.parse(response.content);
+              if (parsed.sections) {
+                aiBody = parsed.sections
+                  .map((s: any) => `## ${s.title}\n\n${s.content}`)
+                  .join("\n\n");
+              }
+            } catch {
+              // If not JSON, use direct content
+            }
+            setContent((prev) => prev + "\n\n" + aiBody);
+            toast.success("AI Content added at the bottom of your draft!");
           }
-        } catch {
-          // If not JSON, use direct content
+          setAiLoading(false);
         }
-        setContent((prev) => prev + "\n\n" + aiBody);
-        toast.success("AI Content added at the bottom of your draft!");
       }
-    } catch (err: any) {
-      toast.error(err.message || "AI Generation failed.");
-    } finally {
-      setAiLoading(false);
-    }
+    );
   };
+
+  if (isEdit && isLoadingIssue) {
+    return <div className="p-8 text-center text-slate-400">Loading issue details...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -156,14 +209,14 @@ Analyze my Sadapay monthly PDF statement. Categorize transactions into: Food (Fo
             className="border-slate-800 hover:bg-slate-800 text-slate-300 h-9 transition-colors"
             disabled={saving}
           >
-            <Save className="w-4 h-4 mr-2" /> Save Draft
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Draft
           </Button>
           <Button
             onClick={() => handleSave("sent")}
             className="bg-emerald-600 hover:bg-emerald-500 text-white h-9 transition-colors"
             disabled={saving}
           >
-            <Play className="w-4 h-4 mr-2" /> Publish Issue
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />} Publish Issue
           </Button>
         </div>
       </div>

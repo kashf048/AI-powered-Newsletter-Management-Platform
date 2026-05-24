@@ -7,15 +7,15 @@ from backend.app.config import settings
 class AIService:
     @staticmethod
     async def invoke_llm(messages: List[Dict[str, str]], temperature: float = 0.7) -> Dict[str, Any]:
-        has_api_key = bool(settings.BUILT_IN_FORGE_API_KEY and settings.BUILT_IN_FORGE_API_KEY != "your_manus_forge_api_key_here")
+        has_api_key = bool(settings.GROQ_API_KEY and settings.GROQ_API_KEY.strip())
         
         if has_api_key:
             try:
-                # Forge AI uses OpenAI compatible API format
-                api_url = f"{settings.BUILT_IN_FORGE_API_URL.rstrip('/')}/v1/chat/completions"
+                # Groq uses OpenAI compatible API format
+                api_url = settings.GROQ_API_URL
                 headers = {
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {settings.BUILT_IN_FORGE_API_KEY}"
+                    "Authorization": f"Bearer {settings.GROQ_API_KEY}"
                 }
                 payload = {
                     "model": "llama-3.3-70b-versatile",
@@ -27,9 +27,9 @@ class AIService:
                     response = await client.post(api_url, json=payload, headers=headers, timeout=60.0)
                     if response.status_code == 200:
                         return response.json()
-                    print(f"[AI Service] Forge API returned non-ok status: {response.status_code}")
+                    print(f"[AI Service] Groq API returned non-ok status: {response.status_code}")
             except Exception as e:
-                print(f"[AI Service] Error calling Forge API: {e}")
+                print(f"[AI Service] Error calling Groq API: {e}")
 
         # Fallback / Mock generator for offline/local development
         print("[AI Service] Using fallback mock AI content generator")

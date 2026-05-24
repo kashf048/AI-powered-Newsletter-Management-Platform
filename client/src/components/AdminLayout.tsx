@@ -24,7 +24,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
 
   const logout = useMutation({
@@ -48,6 +48,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   };
 
+  // Redirect to login if user is not authorized
+  React.useEffect(() => {
+    if (!isLoading && (!user || user.role !== "admin")) {
+      setLocation("/login");
+    }
+  }, [user, isLoading, setLocation]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-sans">
@@ -56,22 +63,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
-  // Redirect to home if user is not authorized
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-center px-4 font-sans text-foreground">
-        <div className="w-16 h-16 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto mb-2">
-          <X className="w-8 h-8 text-destructive" />
-        </div>
-        <h2 className="text-xl font-bold">Access Denied</h2>
-        <p className="text-muted-foreground text-sm max-w-xs">
-          This portal requires authenticated admin role.
-        </p>
-        <Link href="/">
-          <Button className="bg-primary hover:bg-primary/95 text-primary-foreground px-6">
-            Return to Homepage
-          </Button>
-        </Link>
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-sans">
+        <span>Redirecting to secure login...</span>
       </div>
     );
   }

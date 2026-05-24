@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Download, Trash, UserX, UserCheck, RefreshCw } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiService } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -30,13 +30,37 @@ export default function SubscribersList() {
     return matchesSearch && matchesStatus;
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: apiService.admin.deleteSubscriber,
+    onSuccess: () => {
+      toast.success("Subscriber deleted successfully");
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to delete subscriber");
+    }
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) => apiService.admin.updateSubscriber(id, { status }),
+    onSuccess: () => {
+      toast.success("Subscriber status updated successfully");
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to update status");
+    }
+  });
+
   const handleStatusChange = (id: number, currentStatus: string) => {
     const nextStatus = currentStatus === "active" ? "pending" : "active";
-    toast.success(`Subscriber status changed to ${nextStatus} (Simulation)`);
+    updateStatusMutation.mutate({ id, status: nextStatus });
   };
 
   const handleDelete = (id: number) => {
-    toast.success(`Removed subscriber #${id} (Simulation)`);
+    if (confirm("Are you sure you want to delete this subscriber?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   const handleExportCSV = () => {

@@ -108,8 +108,24 @@ temp/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 
-# Manus version file (auto-generated, not part of source)
-client/public/__manus__/version.json
+# Manus version file and logs (auto-generated, not part of source)
+client/public/__manus__/
+.manus-logs/
 
 # Local project config containing credentials
 .project-config.json
+
+# Python & Backend specific ignores
+backend/.env
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+

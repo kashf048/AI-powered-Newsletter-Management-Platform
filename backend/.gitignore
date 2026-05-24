@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+env/
+
+# Test and coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/

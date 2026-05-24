@@ -6,15 +6,16 @@ from pydantic import field_validator
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./database.db"
     JWT_SECRET: str = "kj2hwgedfyv78f9ro43kjherfyg7g89fr4okjrhfugyvb78g9r4iwt4w0it"
-    VITE_APP_ID: str = "PbWNmmJLvG7EgPvn48QQw6"
     OWNER_NAME: str = "Mansoor Ali"
-    OWNER_OPEN_ID: str = "G3bMnM4qoUt6FDoRBYAXab"
-    BUILT_IN_FORGE_API_KEY: str = "your_manus_forge_api_key_here"
-    BUILT_IN_FORGE_API_URL: str = "https://forge.manus.ai"
-    OAUTH_SERVER_URL: str = "https://api.manus.im"
-    PORT: int = 3000
-    NODE_ENV: str = "development"
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_API_URL: str = "https://api.groq.com/openai/v1/chat/completions"
+    PORT: int = 8000
     RESEND_API: Optional[str] = None
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+    ADMIN_EMAILS: str = "admin@nexusdigest.pk,mansoor.ali@example.com"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(
         env_file=".env",

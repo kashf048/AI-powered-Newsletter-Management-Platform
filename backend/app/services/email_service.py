@@ -39,7 +39,8 @@ class EmailService:
     @classmethod
     def send_confirmation_email(cls, email: str, full_name: Optional[str], token: str) -> bool:
         # Create subscription confirmation HTML page
-        confirm_url = f"http://localhost:{settings.PORT}/confirm?token={token}"
+        frontend_url = settings.FRONTEND_URL.rstrip('/')
+        confirm_url = f"{frontend_url}/confirm?token={token}"
         subject = "Confirm your subscription to NexusAI Digest"
         
         name_greet = f" {full_name}" if full_name else ""
@@ -61,7 +62,8 @@ class EmailService:
 
     @classmethod
     def send_newsletter_issue(cls, email: str, title: str, preview_text: str, html_content: str, unsubscribe_token: str) -> bool:
-        unsub_url = f"http://localhost:{settings.PORT}/unsubscribe?token={unsubscribe_token}"
+        frontend_url = settings.FRONTEND_URL.rstrip('/')
+        unsub_url = f"{frontend_url}/unsubscribe?token={unsubscribe_token}"
         
         # Append unsubscribe footer to newsletter html_content if not present
         footer = f"""

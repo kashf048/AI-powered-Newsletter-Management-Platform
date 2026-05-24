@@ -3,259 +3,318 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, Landmark, Plus, BarChart2, PlusCircle, CheckCircle2, AlertCircle } from "lucide-react";
+import { DollarSign, Landmark, Plus, PlusCircle, Trash, RefreshCw, Globe, Mail, User } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiService } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 export default function Sponsors() {
-  const [sponsors, setSponsors] = useState([
-    { id: 1, company: "Bazaar Technologies", campaign: "AI Engineers Hiring Drive", placement: "Top Banner", issueNumber: 18, price: 150, status: "paid", clicks: 142, impressions: 3200 },
-    { id: 2, company: "Systems Limited", campaign: "Cloud Native Summit Sponsorship", placement: "Middle Section", issueNumber: 17, price: 120, status: "paid", clicks: 98, impressions: 3150 },
-    { id: 3, company: "Sadapay", campaign: "SadaBiz Freelancer Account Launch", placement: "Bottom Pick", issueNumber: 19, price: 100, status: "pending", clicks: 0, impressions: 0 },
-  ]);
+  const { data: sponsors, isLoading, refetch } = useQuery({
+    queryKey: ["sponsors"],
+    queryFn: apiService.admin.getSponsors,
+    refetchOnWindowFocus: false,
+  });
 
-  const [company, setCompany] = useState("");
-  const [campaign, setCampaign] = useState("");
-  const [placement, setPlacement] = useState("Top Banner");
-  const [issueNumber, setIssueNumber] = useState(19);
-  const [price, setPrice] = useState(100);
+  const [companyName, setCompanyName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [status, setStatus] = useState("prospect");
+  const [notes, setNotes] = useState("");
 
-  const handleAddSponsor = (e: React.FormEvent) => {
+  const createMutation = useMutation({
+    mutationFn: apiService.admin.createSponsor,
+    onSuccess: () => {
+      toast.success("Sponsor created successfully!");
+      setCompanyName("");
+      setContactName("");
+      setContactEmail("");
+      setWebsiteUrl("");
+      setStatus("prospect");
+      setNotes("");
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to create sponsor");
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: apiService.admin.deleteSponsor,
+    onSuccess: () => {
+      toast.success("Sponsor deleted successfully");
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to delete sponsor");
+    }
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) => apiService.admin.updateSponsor(id, payload),
+    onSuccess: () => {
+      toast.success("Sponsor updated successfully");
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to update sponsor");
+    }
+  });
+
+  const handleCreateSponsor = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!company || !campaign) {
-      toast.error("Please fill in company and campaign details");
+    if (!companyName || !contactEmail) {
+      toast.error("Please fill in company name and contact email");
       return;
     }
 
-    const newSponsor = {
-      id: Date.now(),
-      company,
-      campaign,
-      placement,
-      issueNumber: Number(issueNumber),
-      price: Number(price),
-      status: "pending",
-      clicks: 0,
-      impressions: 0,
-    };
-
-    setSponsors([newSponsor, ...sponsors]);
-    toast.success("Sponsor slot booked successfully!");
-    setCompany("");
-    setCampaign("");
+    createMutation.mutate({
+      companyName,
+      contactName,
+      contactEmail,
+      websiteUrl,
+      status,
+      notes,
+    });
   };
 
-  const handleMarkAsPaid = (id: number) => {
-    setSponsors(
-      sponsors.map((s) => (s.id === id ? { ...s, status: "paid" } : s))
-    );
-    toast.success("Sponsorship marked as paid!");
+  const handleDelete = (id: number) => {
+    if (confirm("Are you sure you want to delete this sponsor?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
-  const totalRevenue = sponsors.reduce((acc, curr) => acc + curr.price, 0);
-  const paidRevenue = sponsors
-    .filter((s) => s.status === "paid")
-    .reduce((acc, curr) => acc + curr.price, 0);
+  const handleToggleStatus = (id: number, currentStatus: string) => {
+    const nextStatus = currentStatus === "active" ? "paused" : "active";
+    updateStatusMutation.mutate({ id, payload: { status: nextStatus } });
+  };
+
+  // Simple statistics
+  const totalSponsors = sponsors?.length || 0;
+  const activeSponsors = sponsors?.filter(s => s.status === "active").length || 0;
+  const totalSpend = sponsors?.reduce((acc, curr) => acc + (curr.totalSpendPkr || 0), 0) || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white font-sans">Sponsorships</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Manage bookings, track slots placement, and monitor CTR metrics.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Sponsors</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Manage your advertisers, sponsorships growth, and billing status.
+          </p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => refetch()} className="text-muted-foreground hover:text-foreground">
+          <RefreshCw className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Revenue Widgets */}
+      {/* Statistics Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-slate-900 border-slate-800/80">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Bookings Value</span>
-            <DollarSign className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Sponsors</span>
+            <User className="w-4 h-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${totalRevenue} USD</div>
-            <p className="text-xs text-slate-400 mt-1">Cumulative bookings lifetime</p>
+            <div className="text-2xl font-bold text-white">{totalSponsors}</div>
+            <p className="text-xs text-slate-400 mt-1">Total database profile count</p>
           </CardContent>
         </Card>
 
         <Card className="bg-slate-900 border-slate-800/80">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Paid Revenue</span>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Campaigns</span>
             <Landmark className="w-4 h-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${paidRevenue} USD</div>
-            <p className="text-xs text-slate-400 mt-1">Funds successfully cleared</p>
+            <div className="text-2xl font-bold text-white">{activeSponsors}</div>
+            <p className="text-xs text-slate-400 mt-1">Sponsors currently active</p>
           </CardContent>
         </Card>
 
         <Card className="bg-slate-900 border-slate-800/80">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pending Revenue</span>
-            <AlertCircle className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Spend</span>
+            <DollarSign className="w-4 h-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${totalRevenue - paidRevenue} USD</div>
-            <p className="text-xs text-slate-400 mt-1">Awaiting confirmation</p>
+            <div className="text-2xl font-bold text-white">Rs. {totalSpend.toLocaleString()} PKR</div>
+            <p className="text-xs text-slate-400 mt-1">Total revenue generated from sponsors</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Columns: Bookings Table */}
+        {/* Left Columns: Sponsors Table */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-slate-900 border-slate-800/80">
             <CardHeader>
-              <CardTitle className="text-base font-bold text-white">Sponsorship Bookings</CardTitle>
+              <CardTitle className="text-base font-bold text-white">All Sponsors</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader className="border-slate-800">
-                  <TableRow className="border-slate-800 hover:bg-slate-800/10">
-                    <TableHead className="text-slate-400 text-xs">Sponsor</TableHead>
-                    <TableHead className="text-slate-400 text-xs w-20">Issue #</TableHead>
-                    <TableHead className="text-slate-400 text-xs w-28">Placement</TableHead>
-                    <TableHead className="text-slate-400 text-xs w-24">Price</TableHead>
-                    <TableHead className="text-slate-400 text-xs w-24">Clicks / CTR</TableHead>
-                    <TableHead className="text-slate-400 text-xs w-24">Status</TableHead>
-                    <TableHead className="text-slate-400 text-xs w-16 text-right"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sponsors.map((s) => (
-                    <TableRow key={s.id} className="border-slate-800 hover:bg-slate-800/20">
-                      <TableCell className="py-3.5">
-                        <div className="text-xs font-bold text-white">{s.company}</div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-[160px]">{s.campaign}</div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-350">
-                        #{s.issueNumber}
-                      </TableCell>
-                      <TableCell className="text-slate-400 text-xs">
-                        {s.placement}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs font-semibold text-slate-200">
-                        ${s.price}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-400">
-                        {s.clicks > 0 ? (
-                          <span>
-                            {s.clicks}{" "}
-                            <span className="text-[10px] text-slate-500">
-                              ({((s.clicks / s.impressions) * 100).toFixed(1)}%)
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-600 italic">No activity</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {s.status === "paid" ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/10 text-[10px] px-2 py-0.5">
-                            Paid
+              {isLoading ? (
+                <div className="p-8 text-center text-slate-400">Loading sponsors...</div>
+              ) : sponsors && sponsors.length > 0 ? (
+                <Table>
+                  <TableHeader className="border-slate-800">
+                    <TableRow className="border-slate-800 hover:bg-slate-800/10">
+                      <TableHead className="text-slate-400 text-xs">Company</TableHead>
+                      <TableHead className="text-slate-400 text-xs">Contact</TableHead>
+                      <TableHead className="text-slate-400 text-xs">Status</TableHead>
+                      <TableHead className="text-slate-400 text-xs">Total Spend</TableHead>
+                      <TableHead className="text-slate-400 text-xs text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sponsors.map((s) => (
+                      <TableRow key={s.id} className="border-slate-800 hover:bg-slate-800/20">
+                        <TableCell className="py-3.5">
+                          <div className="text-xs font-bold text-white">{s.companyName}</div>
+                          {s.websiteUrl && (
+                            <a 
+                              href={s.websiteUrl} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="text-[10px] text-emerald-400 flex items-center gap-1 hover:underline mt-0.5"
+                            >
+                              <Globe className="w-2.5 h-2.5" /> Website
+                            </a>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs text-slate-200">{s.contactName || "N/A"}</div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <Mail className="w-2.5 h-2.5" /> {s.contactEmail}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            onClick={() => handleToggleStatus(s.id, s.status)}
+                            className={`cursor-pointer text-[10px] px-2 py-0.5 border ${
+                              s.status === "active" 
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/10" 
+                                : s.status === "paused"
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/10"
+                                : "bg-slate-500/10 text-slate-400 border-slate-500/10"
+                            }`}
+                          >
+                            {s.status}
                           </Badge>
-                        ) : (
-                          <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/10 text-[10px] px-2 py-0.5">
-                            Pending
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {s.status === "pending" && (
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-slate-200">
+                          Rs. {(s.totalSpendPkr || 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => handleMarkAsPaid(s.id)}
-                            className="h-8 w-8 text-emerald-400 hover:text-emerald-300"
+                            onClick={() => handleDelete(s.id)}
+                            className="h-8 w-8 text-slate-400 hover:text-red-400"
                           >
-                            <CheckCircle2 className="w-4 h-4" />
+                            <Trash className="w-4 h-4" />
                           </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="p-8 text-center text-slate-500">No sponsors found. Add one on the right!</div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column: New Sponsor Booking Form */}
+        {/* Right Column: New Sponsor Form */}
         <div>
           <Card className="bg-slate-900 border-slate-800/80 shadow-md">
             <CardHeader>
               <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                <PlusCircle className="w-5 h-5 text-emerald-400" /> Book Slot
+                <PlusCircle className="w-5 h-5 text-emerald-400" /> Add Sponsor
               </CardTitle>
               <CardDescription className="text-slate-400 text-xs">
-                Schedule a new sponsorship campaign slot.
+                Create a new advertiser profile in the system.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAddSponsor} className="space-y-4">
+              <form onSubmit={handleCreateSponsor} className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Company Name</label>
                   <Input
                     placeholder="e.g. Systems Limited"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
                     className="bg-slate-950 border-slate-800 text-white"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Campaign Name</label>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact Name</label>
                   <Input
-                    placeholder="e.g. AI Engineer Career Drive"
-                    value={campaign}
-                    onChange={(e) => setCampaign(e.target.value)}
+                    placeholder="e.g. Ali Ahmed"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact Email</label>
+                  <Input
+                    type="email"
+                    placeholder="e.g. ads@systemsltd.com"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
                     className="bg-slate-950 border-slate-800 text-white"
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Issue #</label>
-                    <Input
-                      type="number"
-                      value={issueNumber}
-                      onChange={(e) => setIssueNumber(parseInt(e.target.value))}
-                      className="bg-slate-950 border-slate-800 text-white"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Price (USD)</label>
-                    <Input
-                      type="number"
-                      value={price}
-                      onChange={(e) => setPrice(parseInt(e.target.value))}
-                      className="bg-slate-950 border-slate-800 text-white"
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Website URL</label>
+                  <Input
+                    type="url"
+                    placeholder="e.g. https://www.systemsltd.com"
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    className="bg-slate-950 border-slate-800 text-white"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Slot Placement</label>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</label>
                   <select
-                    value={placement}
-                    onChange={(e) => setPlacement(e.target.value)}
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 text-slate-300 rounded-lg p-2 text-sm focus:border-emerald-500 focus:outline-none"
                   >
-                    <option value="Top Banner">Top Banner (Premium)</option>
-                    <option value="Middle Section">Middle Section</option>
-                    <option value="Bottom Pick">Bottom Pick</option>
+                    <option value="prospect">Prospect</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="inactive">Inactive</option>
                   </select>
                 </div>
 
-                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs transition-colors font-bold">
-                  Schedule Booking
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Internal Notes</label>
+                  <textarea
+                    placeholder="e.g. Booked for issue #18 Roundup slot"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full h-20 bg-slate-950 border border-slate-800 text-slate-300 rounded-lg p-2 text-sm focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={createMutation.isPending}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs transition-colors font-bold"
+                >
+                  {createMutation.isPending ? "Adding..." : "Add Sponsor Profile"}
                 </Button>
               </form>
             </CardContent>

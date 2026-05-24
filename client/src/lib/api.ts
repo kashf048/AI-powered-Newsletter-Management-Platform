@@ -124,6 +124,10 @@ export const apiService = {
       const response = await api.get<Issue[]>("/api/admin/issues");
       return response.data;
     },
+    getIssue: async (id: number): Promise<Issue> => {
+      const response = await api.get<Issue>(`/api/admin/issues/${id}`);
+      return response.data;
+    },
     createIssue: async (payload: Partial<Issue> & { sections?: IssueSection[] }): Promise<Issue> => {
       const response = await api.post<Issue>("/api/admin/issues", payload);
       return response.data;
@@ -158,6 +162,30 @@ export const apiService = {
     },
     createSponsor: async (payload: Omit<Sponsor, "id" | "totalSpendPkr">): Promise<Sponsor> => {
       const response = await api.post<Sponsor>("/api/admin/sponsors", payload);
+      return response.data;
+    },
+    updateSponsor: async (id: number, payload: Partial<Sponsor>): Promise<Sponsor> => {
+      const response = await api.put<Sponsor>(`/api/admin/sponsors/${id}`, payload);
+      return response.data;
+    },
+    deleteSponsor: async (id: number): Promise<{ success: boolean; message: string }> => {
+      const response = await api.delete<{ success: boolean; message: string }>(`/api/admin/sponsors/${id}`);
+      return response.data;
+    },
+    deleteSubscriber: async (id: number): Promise<{ success: boolean; message: string }> => {
+      const response = await api.delete<{ success: boolean; message: string }>(`/api/admin/subscribers/${id}`);
+      return response.data;
+    },
+    updateSubscriber: async (id: number, payload: { status?: string; fullName?: string; email?: string }): Promise<{ success: boolean; message: string }> => {
+      const response = await api.put<{ success: boolean; message: string }>(`/api/admin/subscribers/${id}`, payload);
+      return response.data;
+    },
+    deleteIssue: async (id: number): Promise<{ success: boolean; message: string }> => {
+      const response = await api.delete<{ success: boolean; message: string }>(`/api/admin/issues/${id}`);
+      return response.data;
+    },
+    updateSettings: async (payload: { name?: string; email?: string; avatarUrl?: string }): Promise<{ success: boolean; message: string }> => {
+      const response = await api.put<{ success: boolean; message: string }>("/api/admin/settings", payload);
       return response.data;
     },
     getReferralLeaderboard: async (): Promise<Subscriber[]> => {

@@ -34,15 +34,6 @@ async def get_current_user_optional(request: Request, db: AsyncSession = Depends
                 "role": db_user.role if db_user else payload.get("role", "user"),
             }
 
-    # Fallback in local development
-    if not user_info and settings.NODE_ENV == "development":
-        user_info = {
-            "openId": settings.OWNER_OPEN_ID,
-            "email": "admin@nexusdigest.pk",
-            "name": settings.OWNER_NAME,
-            "role": "admin",
-        }
-
     return user_info
 
 async def get_current_user(user: Optional[dict] = Depends(get_current_user_optional)) -> dict:
@@ -54,7 +45,9 @@ async def get_current_user(user: Optional[dict] = Depends(get_current_user_optio
     return user
 
 async def get_current_admin(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict:
-    if user.get("role") != "admin":
+    # Double check admin role
+    allowed_emails = [e.strip().lower() for e in settings.ADMIN_EMAILS.split(",") if e.strip()]
+    if user.get("role") != "admin" and user.get("email", "").lower() not in allowed_emails:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access Denied: Admin role required"
@@ -66,12 +59,13 @@ async def get_current_admin(user: dict = Depends(get_current_user), db: AsyncSes
     admin_entry = result.scalars().first()
     
     if not admin_entry:
-        # Create admin entry on the fly matching Node.js createOrUpdateAdmin behavior
+        email_val = user.get("email") or "admin@nexusdigest.pk"
+        is_super = allowed_emails and (email_val.lower() == allowed_emails[0])
         new_admin = Admin(
             open_id=open_id,
-            email=user["email"] or "admin@nexusdigest.pk",
-            name=user["name"] or "Admin User",
-            is_superadmin=(open_id == settings.OWNER_OPEN_ID)
+            email=email_val,
+            name=user.get("name") or "Admin User",
+            is_superadmin=is_super
         )
         db.add(new_admin)
         await db.commit()

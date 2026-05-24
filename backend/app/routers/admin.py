@@ -1,17 +1,18 @@
+import html
 import json
 import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import desc, func, and_
+from sqlalchemy import desc, func, and_, delete
 from typing import List, Optional
 from backend.app.database import get_db
 from backend.app.dependencies import get_current_admin
-from backend.app.models import Subscriber, Issue, IssueSection, Sponsor, AiGeneration
+from backend.app.models import Subscriber, Issue, IssueSection, Sponsor, AiGeneration, User, Admin
 from backend.app.schemas import (
     IssueCreate, IssueResponse, SponsorCreate, SponsorResponse, 
     AIToolRequest, SubjectLineRequest, AnalyticsOverviewResponse,
-    SubscriberGrowthResponse
+    SubscriberGrowthResponse, SettingsUpdateRequest
 )
 from backend.app.services.ai_service import AIService
 from backend.app.services.email_service import EmailService
@@ -103,7 +104,7 @@ async def create_issue(payload: IssueCreate, admin: dict = Depends(get_current_a
         reading_time_minutes=payload.readingTimeMinutes or 5,
         cover_image_url=payload.coverImageUrl,
         status=payload.status or "draft",
-        issue_date=payload.issueDate or datetime.datetime.utcnow(),
+        issue_date=payload.issueDate or datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
     )
 
     db.add(new_issue)
@@ -125,6 +126,28 @@ async def create_issue(payload: IssueCreate, admin: dict = Depends(get_current_a
     await db.commit()
     await db.refresh(new_issue)
     return new_issue
+
+
+@router.get("/issues/{issue_id}", response_model=IssueResponse)
+async def get_issue(issue_id: int, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Issue)
+        .where(and_(Issue.id == issue_id, Issue.admin_id == admin["adminId"]))
+    )
+    issue = result.scalars().first()
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found"
+        )
+    # Fetch sections
+    sec_result = await db.execute(
+        select(IssueSection)
+        .where(IssueSection.issue_id == issue_id)
+        .order_by(IssueSection.order_index)
+    )
+    issue.sections = sec_result.scalars().all()
+    return issue
 
 
 @router.put("/issues/{issue_id}", response_model=IssueResponse)
@@ -236,7 +259,7 @@ async def send_issue(issue_id: int, admin: dict = Depends(get_current_admin), db
 
     # 4. Update issue state
     issue.status = "sent"
-    issue.sent_at = datetime.datetime.utcnow()
+    issue.sent_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     issue.total_recipients = success_count
     db.add(issue)
     await db.commit()
@@ -255,7 +278,7 @@ async def get_subscribers(admin: dict = Depends(get_current_admin), db: AsyncSes
 
 @router.get("/subscribers/growth", response_model=List[SubscriberGrowthResponse])
 async def get_subscriber_growth(days: int = 30, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
-    start_date = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    start_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
     result = await db.execute(
         select(Subscriber)
         .where(Subscriber.created_at >= start_date)
@@ -414,3 +437,108 @@ async def get_referral_leaderboard(admin: dict = Depends(get_current_admin), db:
     )
     leaderboard = result.scalars().all()
     return leaderboard
+
+
+@router.delete("/issues/{id}")
+async def delete_issue(id: int, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    # First delete related sections
+    await db.execute(delete(IssueSection).where(IssueSection.issue_id == id))
+    # Then delete the issue
+    result = await db.execute(select(Issue).where(Issue.id == id))
+    issue = result.scalars().first()
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    await db.delete(issue)
+    await db.commit()
+    return {"success": True, "message": "Issue deleted successfully"}
+
+
+@router.put("/sponsors/{id}", response_model=SponsorResponse)
+async def update_sponsor(id: int, payload: SponsorCreate, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Sponsor).where(Sponsor.id == id))
+    sponsor = result.scalars().first()
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    sponsor.company_name = payload.companyName
+    sponsor.contact_name = payload.contactName
+    sponsor.contact_email = payload.contactEmail
+    sponsor.website_url = payload.websiteUrl
+    sponsor.logo_url = payload.logoUrl
+    sponsor.status = payload.status or sponsor.status
+    sponsor.industry = payload.industry
+    sponsor.notes = payload.notes
+    sponsor.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    db.add(sponsor)
+    await db.commit()
+    await db.refresh(sponsor)
+    return sponsor
+
+
+@router.delete("/sponsors/{id}")
+async def delete_sponsor(id: int, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Sponsor).where(Sponsor.id == id))
+    sponsor = result.scalars().first()
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    await db.delete(sponsor)
+    await db.commit()
+    return {"success": True, "message": "Sponsor deleted successfully"}
+
+
+@router.delete("/subscribers/{id}")
+async def delete_subscriber(id: int, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Subscriber).where(Subscriber.id == id))
+    subscriber = result.scalars().first()
+    if not subscriber:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+    await db.delete(subscriber)
+    await db.commit()
+    return {"success": True, "message": "Subscriber deleted successfully"}
+
+
+@router.put("/subscribers/{id}")
+async def update_subscriber(id: int, payload: dict, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Subscriber).where(Subscriber.id == id))
+    subscriber = result.scalars().first()
+    if not subscriber:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+    if "status" in payload:
+        subscriber.status = html.escape(payload["status"])
+    if "fullName" in payload:
+        subscriber.full_name = html.escape(payload["fullName"]) if payload["fullName"] else None
+    if "email" in payload:
+        subscriber.email = html.escape(payload["email"])
+    subscriber.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    db.add(subscriber)
+    await db.commit()
+    return {"success": True, "message": "Subscriber updated successfully"}
+
+
+@router.put("/settings")
+async def update_settings(payload: SettingsUpdateRequest, admin: dict = Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Admin).where(Admin.id == admin["adminId"]))
+    db_admin = result.scalars().first()
+    if not db_admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    if payload.name:
+        db_admin.name = html.escape(payload.name)
+    if payload.email:
+        db_admin.email = html.escape(payload.email)
+    if payload.avatarUrl:
+        db_admin.avatar_url = html.escape(payload.avatarUrl)
+    db_admin.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    db.add(db_admin)
+    
+    # Also update matching User if exists
+    user_result = await db.execute(select(User).where(User.open_id == db_admin.open_id))
+    db_user = user_result.scalars().first()
+    if db_user:
+        if payload.name:
+            db_user.name = html.escape(payload.name)
+        if payload.email:
+            db_user.email = html.escape(payload.email)
+        db_user.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        db.add(db_user)
+
+    await db.commit()
+    return {"success": True, "message": "Settings updated successfully"}

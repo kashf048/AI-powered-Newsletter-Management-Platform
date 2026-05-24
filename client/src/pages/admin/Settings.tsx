@@ -1,35 +1,69 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Settings as SettingsIcon, ShieldCheck, Mail, Database, KeyRound, EyeOff, Eye, Save } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiService } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function Settings() {
-  const [adminName, setAdminName] = useState("Mansoor Ali");
-  const [adminEmail, setAdminEmail] = useState("mansoor@nexusai.pk");
+  const { data: user, refetch } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: apiService.auth.getMe,
+    refetchOnWindowFocus: false,
+  });
+
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+
+  // Sync state with loaded user
+  useEffect(() => {
+    if (user) {
+      setAdminName(user.name || "");
+      setAdminEmail(user.email || "");
+    }
+  }, [user]);
 
   const [newsletterName, setNewsletterName] = useState("NexusAI Digest");
   const [senderEmail, setSenderEmail] = useState("briefing@nexusai.pk");
   const [resendApiKey, setResendApiKey] = useState("re_983f2a8c3d7e8f1a");
   const [showResend, setShowResend] = useState(false);
 
-  const [openAiKey, setOpenAiKey] = useState("sk-forge-3298a83c748e91d");
+  const [openAiKey, setOpenAiKey] = useState("gsk_placeholder_key_val");
   const [showOpenAi, setShowOpenAi] = useState(false);
+
+  const profileMutation = useMutation({
+    mutationFn: apiService.admin.updateSettings,
+    onSuccess: (res) => {
+      toast.success(res.message || "Profile updated successfully!");
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.message || "Failed to update profile");
+    }
+  });
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Admin profile updated (Simulation)");
+    if (!adminName || !adminEmail) {
+      toast.error("Please fill in name and email");
+      return;
+    }
+    profileMutation.mutate({
+      name: adminName,
+      email: adminEmail,
+    });
   };
 
   const handleSaveNewsletter = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Newsletter configurations saved (Simulation)");
+    toast.success("Newsletter configurations saved (Simulation - Configure via .env for production)");
   };
 
   const handleSaveKeys = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("API Credentials securely stored (Simulation)");
+    toast.success("API Credentials securely stored (Simulation - Configure via .env for production)");
   };
 
   return (
@@ -77,8 +111,12 @@ export default function Settings() {
                     required
                   />
                 </div>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold h-9 gap-1.5 transition-colors">
-                  <Save className="w-3.5 h-3.5" /> Save Profile
+                <Button 
+                  type="submit" 
+                  disabled={profileMutation.isPending}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold h-9 gap-1.5 transition-colors"
+                >
+                  <Save className="w-3.5 h-3.5" /> {profileMutation.isPending ? "Saving..." : "Save Profile"}
                 </Button>
               </form>
             </CardContent>
@@ -153,9 +191,9 @@ export default function Settings() {
                   </div>
                 </div>
 
-                {/* Open AI Key */}
+                {/* Groq Key */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Forge AI API Key</label>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Groq API Key</label>
                   <div className="relative">
                     <Input
                       type={showOpenAi ? "text" : "password"}

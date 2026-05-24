@@ -13,6 +13,7 @@ import Subscribe from "./pages/public/Subscribe";
 import ConfirmEmail from "./pages/public/ConfirmEmail";
 import Unsubscribe from "./pages/public/Unsubscribe";
 import ReferralLanding from "./pages/public/ReferralLanding";
+import Login from "./pages/public/Login";
 
 // Admin pages
 import AdminLayout from "./components/AdminLayout";
@@ -32,11 +33,12 @@ function Router() {
       {/* Public routes */}
       <Route path={"/"} component={Home} />
       <Route path={"/issues"} component={IssuesArchive} />
-      <Route path={"/:slug"} component={IssueReader} />
       <Route path={"/subscribe"} component={Subscribe} />
       <Route path={"/confirm"} component={ConfirmEmail} />
       <Route path={"/unsubscribe"} component={Unsubscribe} />
       <Route path={"/referral/:code"} component={ReferralLanding} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/:slug"} component={IssueReader} />
 
       {/* Admin routes */}
       <Route path={"/admin/*"}>
@@ -69,7 +71,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable={true}>
         <TooltipProvider>
           <Toaster />
           <Router />

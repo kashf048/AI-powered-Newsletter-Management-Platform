@@ -129,3 +129,9 @@ class AnalyticsOverviewResponse(BaseModel):
     totalSubscribers: int
     activeSubscribers: int
     totalIssuesSent: int
+
+# Settings
+class SettingsUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    avatarUrl: Optional[str] = None
