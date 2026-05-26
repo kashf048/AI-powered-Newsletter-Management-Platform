@@ -11,35 +11,74 @@ from backend.app.config import settings
 from backend.app.database import init_db
 from backend.app.routers import auth, public, admin
 
-# Setup logger
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-initialize database schema on startup for easy installation
-    logger.info("Initializing database...")
+    logger.info("Starting NexusAI Digest API...")
+    logger.info("Initializing database schema...")
     await init_db()
-    logger.info("Database initialized successfully.")
+    logger.info("Database ready.")
+    if settings.is_production:
+        logger.info("Running in PRODUCTION mode (secure cookies, strict CORS)")
+    else:
+        logger.info("Running in DEVELOPMENT mode (localhost allowed)")
     yield
+    logger.info("Shutting down NexusAI Digest API.")
+
 
 app = FastAPI(
     title="NexusAI Digest API",
     description="FastAPI Backend for NexusAI Digest Newsletter Management Platform",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    # Disable docs in production to reduce attack surface
+    docs_url="/docs" if not settings.is_production else None,
+    redoc_url="/redoc" if not settings.is_production else None,
 )
 
-# Global Exception Handler to prevent stack trace leaks
+
+# ─── Exception Handlers ──────────────────────────────────────────────────────
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled Exception occurred: {exc}", exc_info=True)
+    logger.error("Unhandled exception on %s %s", request.method, request.url.path, exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "An unexpected server error occurred. Please try again later."}
+        content={"detail": "An unexpected server error occurred. Please try again later."},
     )
 
-# Security Headers Middleware
+
+# ─── CORS ────────────────────────────────────────────────────────────────────
+
+_allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if settings.FRONTEND_URL:
+    _origin = settings.FRONTEND_URL.rstrip("/")
+    if _origin not in _allowed_origins:
+        _allowed_origins.append(_origin)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
+    expose_headers=["X-Request-ID"],
+    max_age=600,  # Cache preflight for 10 minutes
+)
+
+
+# ─── Security Headers Middleware ──────────────────────────────────────────────
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -47,70 +86,86 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self';"
+    )
+    if settings.is_production:
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
     return response
 
-# Request logging middleware
+
+# ─── Request Logging Middleware ───────────────────────────────────────────────
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)
     duration = time.time() - start_time
-    logger.info(f"[{request.method}] {request.url.path} - Status: {response.status_code} - Duration: {duration:.4f}s")
+    logger.info(
+        "[%s] %s → %d (%.4fs)",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration,
+    )
     return response
 
-# Tightened CORS configuration
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-if settings.FRONTEND_URL:
-    frontend_origin = settings.FRONTEND_URL.rstrip('/')
-    if frontend_origin not in origins:
-        origins.append(frontend_origin)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ─── Routes ──────────────────────────────────────────────────────────────────
 
-# API Routers
-@app.get("/api/health")
+@app.get("/api/health", tags=["system"])
 async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "message": "System is running smoothly"
+        "message": "System is running smoothly",
     }
+
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 
-# Serve client assets in production/SPA mode
-static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "dist", "public")
 
-if os.path.exists(static_dir):
-    app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
-    
-    # Catch-all endpoint to serve the frontend SPA application
-    @app.get("/{catchall:path}")
+# ─── SPA / Static Asset Serving ──────────────────────────────────────────────
+
+_static_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "dist",
+    "public",
+)
+
+if os.path.exists(_static_dir):
+    _assets_dir = os.path.join(_static_dir, "assets")
+    if os.path.exists(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    @app.get("/{catchall:path}", include_in_schema=False)
     async def serve_spa(request: Request, catchall: str):
-        # Prevent intercepting /api endpoints
-        if catchall.startswith("api"):
-            return None
-        index_file = os.path.join(static_dir, "index.html")
+        # Never intercept API routes
+        if catchall.startswith("api/") or catchall == "api":
+            return JSONResponse(status_code=404, content={"detail": "Not found"})
+        index_file = os.path.join(_static_dir, "index.html")
         if os.path.exists(index_file):
             return FileResponse(index_file)
-        return {"detail": "Frontend SPA index.html not found. Please build the frontend."}
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Frontend not built. Run `pnpm run build`."},
+        )
 else:
-    @app.get("/")
+    @app.get("/", tags=["system"])
     async def root():
         return {
             "name": "NexusAI Digest API",
             "status": "online",
             "docs": "/docs",
-            "message": "Start the client in development mode or build it to serve files."
+            "message": "Start the client in development mode or build it to serve files.",
         }

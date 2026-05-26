@@ -20,7 +20,7 @@ export default function Sponsors() {
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [status, setStatus] = useState("prospect");
+  const [status, setStatus] = useState<"prospect" | "active" | "paused" | "inactive">("prospect");
   const [notes, setNotes] = useState("");
 
   const createMutation = useMutation({
@@ -71,11 +71,13 @@ export default function Sponsors() {
 
     createMutation.mutate({
       companyName,
-      contactName,
+      contactName: contactName || null,
       contactEmail,
-      websiteUrl,
+      websiteUrl: websiteUrl || null,
       status,
-      notes,
+      notes: notes || null,
+      logoUrl: null,
+      industry: null,
     });
   };
 
@@ -93,7 +95,7 @@ export default function Sponsors() {
   // Simple statistics
   const totalSponsors = sponsors?.length || 0;
   const activeSponsors = sponsors?.filter(s => s.status === "active").length || 0;
-  const totalSpend = sponsors?.reduce((acc, curr) => acc + (curr.totalSpendPkr || 0), 0) || 0;
+  const totalSpend = sponsors?.reduce((acc, curr) => acc + Number(curr.totalSpendPkr || 0), 0) || 0;
 
   return (
     <div className="space-y-6 font-sans">
@@ -289,7 +291,7 @@ export default function Sponsors() {
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</label>
                   <select
                     value={status}
-                    onChange={(e) => setStatus(e.target.value)}
+                    onChange={(e) => setStatus(e.target.value as "prospect" | "active" | "paused" | "inactive")}
                     className="w-full bg-slate-950 border border-slate-800 text-slate-300 rounded-lg p-2 text-sm focus:border-emerald-500 focus:outline-none"
                   >
                     <option value="prospect">Prospect</option>

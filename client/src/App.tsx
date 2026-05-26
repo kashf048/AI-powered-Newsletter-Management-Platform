@@ -14,6 +14,9 @@ import ConfirmEmail from "./pages/public/ConfirmEmail";
 import Unsubscribe from "./pages/public/Unsubscribe";
 import ReferralLanding from "./pages/public/ReferralLanding";
 import Login from "./pages/public/Login";
+import Register from "./pages/public/Register";
+import ForgotPassword from "./pages/public/ForgotPassword";
+import ResetPassword from "./pages/public/ResetPassword";
 
 // Admin pages
 import AdminLayout from "./components/AdminLayout";
@@ -38,6 +41,9 @@ function Router() {
       <Route path={"/unsubscribe"} component={Unsubscribe} />
       <Route path={"/referral/:code"} component={ReferralLanding} />
       <Route path={"/login"} component={Login} />
+      <Route path={"/register"} component={Register} />
+      <Route path={"/forgot-password"} component={ForgotPassword} />
+      <Route path={"/reset-password"} component={ResetPassword} />
       <Route path={"/:slug"} component={IssueReader} />
 
       {/* Admin routes */}

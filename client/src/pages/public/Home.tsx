@@ -153,7 +153,7 @@ export default function Home() {
         >
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
-            <span>{analytics?.totalSubscribers || 1420}+ subscribers</span>
+            <span>{analytics?.totalSubscribers ? `${analytics.totalSubscribers.toLocaleString()}+ subscribers` : "Growing community"}</span>
           </div>
           <div className="w-1.5 h-1.5 rounded-full bg-border hidden md:block" />
           <div className="flex items-center gap-2">

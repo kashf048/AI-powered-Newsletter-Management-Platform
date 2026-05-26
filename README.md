@@ -156,13 +156,15 @@ The Python FastAPI application automatically initializes and updates the databas
 Start both services for local developer loop:
 
 #### Start Backend (Terminal 1)
+To run the backend, it is recommended to execute from the project root directory so absolute imports resolve correctly:
 ```bash
-cd backend
 # Activate virtualenv
-.\venv\Scripts\Activate.ps1
+.\backend\venv\Scripts\Activate.ps1
+
 # Start FastAPI development server
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn backend.app.main:app --reload --port 8000
 ```
+*(Note: If you run from inside the `backend/` folder directly, you must set `PYTHONPATH=..` first so Python can resolve the absolute package namespace).*
 
 #### Start Frontend (Terminal 2)
 ```bash
