@@ -1,7 +1,9 @@
 import logging
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import event
+from sqlalchemy import event, text
+from sqlalchemy.types import Enum
 from backend.app.config import settings
+from backend.app.models import Base
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,38 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
+# ─── Safe Enum Creation for PostgreSQL ───────────────────────────────────────
+# Set create_type=False on all Enum types to prevent SQLAlchemy from creating them automatically.
+# Instead, we will check and create them safely in the before_create metadata event.
+for table in Base.metadata.tables.values():
+    for col in table.columns:
+        if isinstance(col.type, Enum):
+            col.type.create_type = False
+
+
+@event.listens_for(Base.metadata, "before_create")
+def _safe_create_enums(target, connection, **kw):
+    if connection.dialect.name == "postgresql":
+        # Scan metadata for all Enum columns
+        enum_types = {}
+        for table in target.tables.values():
+            for col in table.columns:
+                if isinstance(col.type, Enum) and col.type.name:
+                    enum_types[col.type.name] = col.type.enums
+        
+        # Create each enum type safely via PL/pgSQL
+        for name, values in enum_types.items():
+            vals_str = ", ".join(f"'{v}'" for v in values)
+            ddl = f"""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '{name}') THEN
+                    CREATE TYPE {name} AS ENUM ({vals_str});
+                END IF;
+            END $$;
+            """
+            connection.execute(text(ddl))
+
 
 async def get_db():
     """FastAPI dependency that provides a database session per request."""
@@ -62,7 +96,6 @@ async def init_db():
     In production with proper migrations, call Alembic instead.
     This function is safe to call on every startup (idempotent via CREATE IF NOT EXISTS).
     """
-    from backend.app.models import Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables verified / created successfully.")

@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import logging
 import datetime
@@ -11,6 +12,22 @@ from backend.app.config import settings
 from backend.app.database import init_db
 from backend.app.routers import auth, public, admin
 
+GREEN = "\033[32m"
+BOLD_GREEN = "\033[1;32m"
+CYAN = "\033[36m"
+WHITE = "\033[37m"
+RESET = "\033[0m"
+
+_BANNER = (
+    f"\n"
+    f"{GREEN}  +--------------------------------------------------+{RESET}\n"
+    f"{BOLD_GREEN}  |        NexusAI Digest  -  API Server             |{RESET}\n"
+    f"{GREEN}  +--------------------------------------------------+{RESET}\n"
+    f"{GREEN}  |  Docs  : {CYAN}http://127.0.0.1:8000/docs{RESET}{GREEN}             |{RESET}\n"
+    f"{GREEN}  |  Health: {CYAN}http://127.0.0.1:8000/api/health{RESET}{GREEN}       |{RESET}\n"
+    f"{GREEN}  +--------------------------------------------------+{RESET}\n"
+)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -21,16 +38,20 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting NexusAI Digest API...")
-    logger.info("Initializing database schema...")
+    sys.stdout.write(_BANNER)
+    sys.stdout.write(f"{GREEN}[*] Initializing database schema...{RESET}\n")
+    sys.stdout.flush()
     await init_db()
-    logger.info("Database ready.")
-    if settings.is_production:
-        logger.info("Running in PRODUCTION mode (secure cookies, strict CORS)")
-    else:
-        logger.info("Running in DEVELOPMENT mode (localhost allowed)")
+    sys.stdout.write(f"{GREEN}[✓] Database ready{RESET}\n")
+    mode = "PRODUCTION (secure cookies + HSTS)" if settings.is_production else "DEVELOPMENT (localhost)"
+    db_type = "PostgreSQL" if settings.is_postgresql else "SQLite"
+    sys.stdout.write(f"{GREEN}[•] Environment : {WHITE}{mode}{RESET}\n")
+    sys.stdout.write(f"{GREEN}[•] Database    : {WHITE}{db_type}{RESET}\n")
+    sys.stdout.write(f"{BOLD_GREEN}[✓] Server successfully started and listening.{RESET}\n\n")
+    sys.stdout.flush()
     yield
-    logger.info("Shutting down NexusAI Digest API.")
+    sys.stdout.write(f"\n{GREEN}[*] Shutting down NexusAI Digest API...{RESET}\n")
+    sys.stdout.flush()
 
 
 app = FastAPI(
